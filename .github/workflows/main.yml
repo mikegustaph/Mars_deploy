@@ -1,0 +1,43 @@
+name: Laravel Deployment
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v2
+
+    - name: Set up PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '7.4'
+
+    - name: Install Composer Dependencies
+      run: composer install --prefer-dist --no-interaction
+
+    - name: Set Permissions for Storage and Bootstrap Cache
+      run: |
+        chmod -R 775 storage
+        chmod -R 775 bootstrap/cache
+
+    - name: Upload to cPanel
+      uses: appleboy/scp-action@master
+      with:
+        host: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        key: ${{ secrets.FTP_PASSWORD }}
+        source: ./
+        target: public_html/  # Adjust this path based on your cPanel setup
+        overwrite: true
+
+    - name: Execute Laravel Migrations and Seed Database (if needed)
+      run: |
+        php artisan migrate --force
+        # Add additional commands if needed
+
