@@ -1,43 +1,30 @@
-name: Laravel Deployment
-
+name: Deploy Laravel Project on push
 on:
   push:
     branches:
       - main
-
 jobs:
-  deploy:
+  web-deploy:
+    name: Deploy
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v2
-
-    - name: Set up PHP
-      uses: shivammathur/setup-php@v2
-      with:
-        php-version: '7.4'
-
-    - name: Install Composer Dependencies
-      run: composer install --prefer-dist --no-interaction
-
-    - name: Set Permissions for Storage and Bootstrap Cache
-      run: |
-        chmod -R 775 storage
-        chmod -R 775 bootstrap/cache
-
-    - name: Upload to cPanel
-      uses: appleboy/scp-action@master
-      with:
-        host: ${{ secrets.FTP_SERVER }}
-        username: ${{ secrets.FTP_USERNAME }}
-        key: ${{ secrets.FTP_PASSWORD }}
-        source: ./
-        target: public_html/  # Adjust this path based on your cPanel setup
-        overwrite: true
-
-    - name: Execute Laravel Migrations and Seed Database (if needed)
-      run: |
-        php artisan migrate --force
-        # Add additional commands if needed
-
+      - name: Get the latest code
+        uses: actions/checkout@v2.3.2
+      - uses: actions/setup-node@master
+      - name: Copy .env
+        run: php -r "file_exists('.env') || copy('.env.example', '.env');"
+      - name: Install Dependencies
+        run: composer update --ignore-platform-reqs
+      - name: Generate key
+        run: php artisan key:generate
+      - name: Generate storage link
+        run: php artisan storage:link
+      - name: Directory Permissions
+        run: chmod -R 777 storage bootstrap/cache
+      - name: 📂 Sync files
+        uses: michaelgustaph/FTP-Deploy-Action@4.0.0
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          server-dir: /
